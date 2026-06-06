@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toolify - JSON & XML Formatter</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f5f6f8;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+h2 {
+  text-align: center;
+}
+
+textarea {
+  width: 100%;
+  height: 220px;
+  margin-top: 10px;
+  padding: 12px;
+  font-family: monospace;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.buttons {
+  margin-top: 10px;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.json {
+  background: #2d6cdf;
+  color: white;
+}
+
+.xml {
+  background: #444;
+  color: white;
+}
+
+.output {
+  background: #0f172a;
+  color: #00ffae;
+  padding: 15px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  margin-top: 15px;
+  font-family: monospace;
+  overflow-x: auto;
+  min-height: 120px;
+}
+
+.status {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.error {
+  color: red;
+}
+
+.success {
+  color: green;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>⚙️ JSON & XML Formatter</h2>
+
+<textarea id="input" placeholder="Paste JSON or XML here..."></textarea>
+
+<div class="buttons">
+  <button class="json" onclick="formatJSON()">Format JSON</button>
+  <button class="json" onclick="minifyJSON()">Minify JSON</button>
+  <button class="xml" onclick="formatXML()">Format XML</button>
+  <button class="xml" onclick="minifyXML()">Minify XML</button>
+</div>
+
+<div id="status" class="status"></div>
+<pre class="output" id="output"></pre>
+</div>
+
+<script>
+
+/* ---------------- JSON ---------------- */
+function formatJSON() {
+  const input = getInput();
+
+  try {
+    const obj = JSON.parse(input);
+    show(JSON.stringify(obj, null, 4));
+    success("Valid JSON ✔");
+  } catch {
+    error("Invalid JSON ❌");
+  }
+}
+
+function minifyJSON() {
+  const input = getInput();
+
+  try {
+    const obj = JSON.parse(input);
+    show(JSON.stringify(obj));
+    success("Minified JSON ✔");
+  } catch {
+    error("Invalid JSON ❌");
+  }
+}
+
+/* ---------------- STRICT XML ---------------- */
+function formatXML() {
+  const input = getInput();
+
+  // 🚫 STRICT RULE: reject JSON input
+  if (input.trim().startsWith("{") || input.trim().startsWith("[")) {
+    error("This is JSON. Use JSON formatter instead ❌");
+    return;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(input, "application/xml");
+
+    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+      error("Invalid XML ❌");
+      return;
+    }
+
+    const serializer = new XMLSerializer();
+    const xmlString = serializer.serializeToString(xmlDoc);
+
+    show(formatXml(xmlString));
+    success("Valid XML ✔");
+
+  } catch {
+    error("Invalid XML ❌");
+  }
+}
+
+function minifyXML() {
+  const input = getInput();
+
+  if (input.trim().startsWith("{") || input.trim().startsWith("[")) {
+    error("This is JSON. Use JSON formatter instead ❌");
+    return;
+  }
+
+  try {
+    const minified = input.replace(/>\s+</g, "><").trim();
+    show(minified);
+    success("Minified XML ✔");
+  } catch {
+    error("Invalid XML ❌");
+  }
+}
+
+/* ---------------- XML FORMATTER ---------------- */
+function formatXml(xml) {
+  let formatted = "";
+  const reg = /(>)(<)(\/*)/g;
+  xml = xml.replace(reg, "$1\r\n$2$3");
+
+  let pad = 0;
+
+  xml.split("\r\n").forEach(node => {
+    if (node.match(/.+<\/\w[^>]*>$/)) {
+      formatted += "  ".repeat(pad) + node + "\n";
+    } else if (node.match(/^<\/\w/)) {
+      pad--;
+      formatted += "  ".repeat(pad) + node + "\n";
+    } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
+      formatted += "  ".repeat(pad) + node + "\n";
+      pad++;
+    } else {
+      formatted += "  ".repeat(pad) + node + "\n";
+    }
+  });
+
+  return formatted.trim();
+}
+
+/* ---------------- HELPERS ---------------- */
+function getInput() {
+  return document.getElementById("input").value;
+}
+
+function show(text) {
+  document.getElementById("output").innerText = text;
+}
+
+function success(msg) {
+  const el = document.getElementById("status");
+  el.innerHTML = `<span class="success">${msg}</span>`;
+}
+
+function error(msg) {
+  const el = document.getElementById("status");
+  el.innerHTML = `<span class="error">${msg}</span>`;
+  document.getElementById("output").innerText = "";
+}
+
+</script>
+
+</body>
+</html>
